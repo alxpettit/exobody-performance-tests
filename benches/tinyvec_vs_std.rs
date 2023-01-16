@@ -9,7 +9,7 @@ fn tiny_vec_alloc_in_place() {
     let mut v1 = tinyvec::ArrayVec::<[f32x8; 128]>::new();
     let f = f32x8::from([0f32; 8]);
     for i in 0..100 {
-        v1.push(f + 8.0);
+        v1.push(black_box(f + 8.0));
     }
     black_box(v1);
 }
@@ -17,7 +17,7 @@ fn tiny_vec_alloc_in_place() {
 fn tiny_vec_ref_alloc(v1: &mut tinyvec::ArrayVec<[f32x8; 128]>) {
     let f = f32x8::from([0f32; 8]);
     for i in 0..100 {
-        v1.push(f + 8.0);
+        v1.push(black_box(f + 8.0));
     }
     v1.clear();
     black_box(v1);
@@ -27,7 +27,7 @@ fn std_vec_alloc_in_place() {
     let f = f32x8::from([0f32; 8]);
     let mut v2 = Vec::<f32x8>::new();
     for i in 0..100 {
-        v2.push(f + 8.0);
+        v2.push(black_box(f + 8.0));
     }
     black_box(v2);
 }
@@ -35,7 +35,7 @@ fn std_vec_alloc_in_place() {
 fn std_vec_ref_alloc(v2: &mut Vec<f32x8>) {
     let f = f32x8::from([0f32; 8]);
     for i in 0..100 {
-        v2.push(f + 8.0);
+        v2.push(black_box(f + 8.0));
     }
     v2.clear();
     black_box(v2);
