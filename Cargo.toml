@@ -12,7 +12,8 @@ tinyvec = "1.6.0"
 wide = "0.7.5"
 
 [[bench]]
-name = "tinyvec_vs_std"
+#name = "tinyvec_vs_std"
+name = "mpsc_vs_others"
 harness = false
 
 
