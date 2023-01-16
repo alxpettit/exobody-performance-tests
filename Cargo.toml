@@ -1,0 +1,20 @@
+[package]
+name = "exobody-performance-tests"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+criterion = "0.4.0"
+duration-human = "0.1.10"
+tinyvec = "1.6.0"
+wide = "0.7.5"
+
+[[bench]]
+name = "tinyvec_vs_std"
+harness = false
+
+
+
+[dev-dependencies]
