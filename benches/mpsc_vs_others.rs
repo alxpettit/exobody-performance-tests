@@ -38,12 +38,26 @@ fn mpsc_test_chunked(tx: &Sender<[f32; 10]>, rx: &mut Receiver<[f32; 10]>) {
     }
 }
 
+// 1.74us -- diminishing returns
+fn mpsc_test_big_chunked(tx: &Sender<[f32; 100]>, rx: &mut Receiver<[f32; 100]>) {
+    for i in 0..10 {
+        tx.send(black_box([0f32; 100])).unwrap();
+    }
+    for i in 0..10 {
+        black_box(rx.recv().unwrap());
+    }
+}
+
 fn criterion_benchmark(c: &mut Criterion) {
     let (tx, mut rx) = mpsc::channel::<f32>();
     let (tx_chunked, mut rx_chunked) = mpsc::channel::<[f32; 10]>();
+    let (tx_big_chunked, mut rx_big_chunked) = mpsc::channel::<[f32; 100]>();
     c.bench_function("mpsc_test", |b| b.iter(|| mpsc_test(&tx, &mut rx)));
     c.bench_function("mpsc_test_chunked", |b| {
         b.iter(|| mpsc_test_chunked(&tx_chunked, &mut rx_chunked))
+    });
+    c.bench_function("mpsc_test_big_chunked", |b| {
+        b.iter(|| mpsc_test_big_chunked(&tx_big_chunked, &mut rx_big_chunked))
     });
 }
 
