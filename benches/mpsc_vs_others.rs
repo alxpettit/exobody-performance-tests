@@ -1,5 +1,13 @@
 #![feature(portable_simd)]
 
+// TODO: test if chunking perf benefit is retained when
+// iterating over samples to build them to/from other data structures.
+// TODO: test how other copying/moving methods compare to iteration when restructuring data.
+// (e.g., if I wrap data in a non-Copy data type,
+// will the compiler decide the data is all the same and reduce op number?)
+// (e.g., is the compiler smart enough to tell, if data is copied and the old data is not used,
+// that is might as well have been moved?)
+
 use criterion::*;
 use std::ops::Add;
 use std::sync::mpsc;
@@ -29,6 +37,8 @@ fn mpsc_test(tx: &Sender<f32>, rx: &mut Receiver<f32>) {
 }
 
 // 2.8us!!!! :O
+// there is definite and substantial overhead from the lock/unlock mechanism inside the MPSC channel.
+// We must test how it compares to a ring buffer + barrier approach.
 fn mpsc_test_chunked(tx: &Sender<[f32; 10]>, rx: &mut Receiver<[f32; 10]>) {
     for i in 0..100 {
         tx.send(black_box([0f32; 10])).unwrap();
