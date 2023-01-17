@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 criterion = "0.4.0"
 duration-human = "0.1.10"
+itertools = "0.10.5"
 tinyvec = "1.6.0"
 wide = "0.7.5"
 
