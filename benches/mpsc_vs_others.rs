@@ -40,20 +40,20 @@ fn mpsc_test(tx: &Sender<f32>, rx: &mut Receiver<f32>) {
 // there is definite and substantial overhead from the lock/unlock mechanism inside the MPSC channel.
 // We must test how it compares to a ring buffer + barrier approach.
 fn mpsc_test_chunked(tx: &Sender<[f32; 10]>, rx: &mut Receiver<[f32; 10]>) {
-    for i in 0..100 {
+    for i in black_box(0..100) {
         tx.send(black_box([0f32; 10])).unwrap();
     }
-    for i in 0..100 {
+    for i in black_box(0..100) {
         black_box(rx.recv().unwrap());
     }
 }
 
 // 1.74us -- diminishing returns
 fn mpsc_test_big_chunked(tx: &Sender<[f32; 100]>, rx: &mut Receiver<[f32; 100]>) {
-    for i in 0..10 {
+    for i in black_box(0..10) {
         tx.send(black_box([0f32; 100])).unwrap();
     }
-    for i in 0..10 {
+    for i in black_box(0..10) {
         black_box(rx.recv().unwrap());
     }
 }
