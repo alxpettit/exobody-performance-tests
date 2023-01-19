@@ -1,7 +1,8 @@
 use async_fn_stream::fn_stream;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;
-use futures::{pin_mut, Stream, StreamExt};
+use futures::stream::{FusedStream, StreamExt};
+use futures::{pin_mut, select, SinkExt, Stream};
 use itertools::Itertools;
 use std::borrow::BorrowMut;
 use std::fs::File;
@@ -49,7 +50,7 @@ async fn output_stream() -> impl Stream<Item = [f32; 100]> {
     })
 }
 
-async fn input_stream<S: Stream<Item = [f32; 100]> + Unpin>(mut stream: S) {
+async fn input_stream<S: Stream<Item = [f32; 100]> + Unpin + FusedStream>(mut stream: S) {
     for item in stream.next().await {
         // assert_eq!(item, [2f32; 100]);
         black_box(item);
@@ -109,23 +110,23 @@ async fn input_stream<S: Stream<Item = [f32; 100]> + Unpin>(mut stream: S) {
 //     }
 // }
 
-//
 // async fn input_stream_switch<S: Stream<Item = [f32; 100]> + Unpin + Send>(
 //     mut streams: Receiver<S>,
 // ) {
 //     let m = Arc::new(Mutex::new(streams));
-//     thread::scope(move |s| {
-//         let mut sm: Option<Arc<Mutex<S>>> = None;
-//         s.spawn(move || {
+//     let mut sm: Arc<Mutex<Option<S>>> = Arc::new(Mutex::new(None));
+//     let mut sm_ptr = sm.clone();
+//     thread::scope(|s| {
+//         s.spawn(|| {
 //             dbg!("Spawned outer");
 //             while let Ok(mut stream) = m.lock().unwrap().recv() {
-//                 sm = Some(Arc::new(Mutex::new(stream)));
+//                 sm_ptr.lock().unwrap().unwrap().borrow_mut() = stream;
 //             }
 //         });
 //
 //         s.spawn(|| {
 //             dbg!("spawned inner");
-//             for item in block_on(sm.unwrap().lock().unwrap().borrow_mut().next()).unwrap() {
+//             for item in block_on(sm.lock().unwrap().borrow_mut().next()).unwrap() {
 //                 //assert_eq!(item, [2f32; 100]);
 //                 // dbg!(item);
 //                 // let s = format!("{:#?}", item);
@@ -137,20 +138,62 @@ async fn input_stream<S: Stream<Item = [f32; 100]> + Unpin>(mut stream: S) {
 //     });
 // }
 
+async fn switch_streams(
+    mut stream_rx: impl Stream<Item = impl Stream<Item = [f32; 100]> + Unpin + FusedStream>
+        + Unpin
+        + FusedStream,
+) {
+    let mut current_stream = stream_rx.next().await.unwrap(); // Get the first stream
+    loop {
+        select! {
+            item = current_stream.next() => {
+                if let Some(item) = item {
+                    black_box(item);
+                    //println!("Received item: {:?}", item);
+                } else {
+                    //println!("Stream ended");
+                    break;
+                }
+            },
+            new_stream = stream_rx.next() => {
+                if let Some(new_stream) = new_stream {
+                    //println!("Switching to new stream");
+                    current_stream = new_stream;
+                } else {
+                    //println!("All streams ended");
+                    break;
+                }
+            }
+        }
+    }
+}
+
 // 200.72 ns!!!!
 async fn async_stream_test() {
-    let out = output_stream().await;
+    let out = output_stream().await.fuse();
     pin_mut!(out);
     input_stream(out).await;
 }
 
+use futures::stream::iter;
+
+fn test_stream_of_streams(
+) -> impl Stream<Item = impl Stream<Item = [f32; 100]> + FusedStream> + FusedStream {
+    fn_stream(|emitter| async move {
+        emitter.emit(iter(vec![[0.0; 100]; 1000]).fuse()).await;
+    })
+    .fuse()
+}
+
 async fn async_stream_test_switch() {
-    let out = output_stream().await;
+    let out = output_stream().await.fuse();
     pin_mut!(out);
-    let (tx_kill, mut rx_kill) = tokio::sync::mpsc::channel::<()>(100);
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<(_, tokio::sync::mpsc::Sender<()>)>(1000);
-    tx.send((out, tx_kill)).await;
-    //switch_streams(rx).await;
+    //let (mut tx, mut rx) = futures::channel::mpsc::channel(1000);
+
+    //tx.send(out).await;
+    let streams = test_stream_of_streams();
+    pin_mut!(streams);
+    switch_streams(streams).await;
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
