@@ -6,8 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-fn-stream = "0.2.0"
+async-stream = "0.3.3"
 criterion = "0.4.0"
 duration-human = "0.1.10"
+futures = { version = "0.3.25", features = ["futures-executor"] }
 itertools = "0.10.5"
 rand = "0.8.5"
 tinyvec = "1.6.0"
@@ -15,7 +18,8 @@ wide = "0.7.5"
 
 [[bench]]
 #name = "tinyvec_vs_std"
-name = "mpsc_vs_others"
+#name = "mpsc_vs_others"
+name = "mpsc_vs_async_stream"
 harness = false
 
 
