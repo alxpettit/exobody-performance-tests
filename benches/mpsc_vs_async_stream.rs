@@ -57,87 +57,6 @@ async fn input_stream<S: Stream<Item = [f32; 100]> + Unpin + FusedStream>(mut st
     }
 }
 
-// async fn switch_streams(rx: mpsc::Receiver<Box<dyn Stream<Item = [f32; 100]> + Unpin>>) {
-//     let (tx, thread_rx) = mpsc::channel();
-//     let stream = Arc::new(Mutex::new(None));
-//
-//     thread::spawn(move || {
-//         while let Ok(s) = rx.recv() {
-//             *stream.lock().unwrap() = Some(s);
-//             tx.send(()).unwrap();
-//         }
-//     });
-//
-//     let stream = stream.clone();
-//     let rt = tokio::runtime::Runtime::new().unwrap();
-//     thread::spawn(move || {
-//         while let Ok(_) = thread_rx.recv() {
-//             let mut s = stream.lock().unwrap();
-//             if let Some(mut s) = s.take() {
-//                 for item in rt.block_on(s.next()) {
-//                     black_box(item);
-//                     //println!("received item: {:?}", item);
-//                 }
-//             }
-//         }
-//     });
-// }
-
-// // this panics...
-// // this is stupid, IDK why chatgpt wrote it this way.
-// // why not
-// async fn switch_streams<S: Stream<Item = [f32; 100]> + Unpin>(
-//     mut rx: tokio::sync::mpsc::Receiver<(S, tokio::sync::mpsc::Sender<()>)>,
-// ) {
-//     let (stream, mut terminate_tx) = rx.recv().await.unwrap();
-//     tokio::pin!(stream);
-//     loop {
-//         tokio::select! {
-//             opt_item = stream.next() => {
-//                 match opt_item {
-//                     Some(item) => assert_eq!(item, [2f32; 100]),
-//                     None => terminate_tx.send(()).await.unwrap(),
-//                 };
-//             },
-//             next_stream = rx.recv() => {
-//                 terminate_tx.send(()).await.unwrap();
-//                 let (next_stream, next_terminate_tx) = next_stream.unwrap();
-//                 *stream = next_stream;
-//                 //terminate_tx = next_terminate_tx;
-//
-//             },
-//         }
-//     }
-// }
-
-// async fn input_stream_switch<S: Stream<Item = [f32; 100]> + Unpin + Send>(
-//     mut streams: Receiver<S>,
-// ) {
-//     let m = Arc::new(Mutex::new(streams));
-//     let mut sm: Arc<Mutex<Option<S>>> = Arc::new(Mutex::new(None));
-//     let mut sm_ptr = sm.clone();
-//     thread::scope(|s| {
-//         s.spawn(|| {
-//             dbg!("Spawned outer");
-//             while let Ok(mut stream) = m.lock().unwrap().recv() {
-//                 sm_ptr.lock().unwrap().unwrap().borrow_mut() = stream;
-//             }
-//         });
-//
-//         s.spawn(|| {
-//             dbg!("spawned inner");
-//             for item in block_on(sm.lock().unwrap().borrow_mut().next()).unwrap() {
-//                 //assert_eq!(item, [2f32; 100]);
-//                 // dbg!(item);
-//                 // let s = format!("{:#?}", item);
-//                 //f.write(s.as_bytes()).unwrap();
-//                 //writeln!(f, "{:#?}", item).unwrap();
-//                 black_box(item);
-//             }
-//         });
-//     });
-// }
-
 async fn switch_streams(
     mut stream_rx: impl Stream<Item = impl Stream<Item = [f32; 100]> + Unpin + FusedStream>
         + Unpin
@@ -151,8 +70,9 @@ async fn switch_streams(
                     black_box(item);
                     //println!("Received item: {:?}", item);
                 } else {
+
                     //println!("Stream ended");
-                    break;
+                   // break;
                 }
             },
             new_stream = stream_rx.next() => {
@@ -186,8 +106,8 @@ fn test_stream_of_streams(
 }
 
 async fn async_stream_test_switch() {
-    let out = output_stream().await.fuse();
-    pin_mut!(out);
+    //let out = output_stream().await.fuse();
+    //pin_mut!(out);
     //let (mut tx, mut rx) = futures::channel::mpsc::channel(1000);
 
     //tx.send(out).await;
