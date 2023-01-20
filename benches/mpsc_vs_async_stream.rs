@@ -1,10 +1,11 @@
-use async_fn_stream::fn_stream;
+use async_fn_stream::{fn_stream, try_fn_stream};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::executor::block_on;
 use futures::stream::{FusedStream, StreamExt};
 use futures::{pin_mut, select, SinkExt, Stream};
 use itertools::Itertools;
 use std::borrow::BorrowMut;
+use std::error::Error;
 use std::fs::File;
 use std::io::Write;
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -47,6 +48,35 @@ async fn output_stream() -> impl Stream<Item = [f32; 100]> {
         for i in black_box(0..1000) {
             emitter.emit(black_box([2f32; 100])).await;
         }
+    })
+}
+//
+// async fn output_stream() -> impl Stream<Item = [f32; 100]> {
+//     fn_stream(|emitter| async move {
+//         for i in black_box(0..1000) {
+//             emitter.emit(black_box([2f32; 100])).await;
+//         }
+//     })
+// }
+
+async fn try_output_stream() -> impl Stream<Item = Result<[f32; 100], Box<dyn Error>>> {
+    try_fn_stream(|emitter| async move {
+        for i in black_box(0..1000) {
+            emitter.emit(black_box([2f32; 100])).await;
+        }
+        Ok(())
+    })
+}
+
+async fn try_input_stream<S: Stream<Item = Result<[f32; 100], Box<dyn Error>>> + Unpin>(
+    mut stream: S,
+) -> impl Stream<Item = Result<(), Box<dyn Error>>> {
+    try_fn_stream(|emitter| async move {
+        while let Some(value) = stream.next().await {
+            let value = value?;
+            black_box(value);
+        }
+        Ok(())
     })
 }
 
@@ -95,6 +125,16 @@ async fn async_stream_test() {
     input_stream(out).await;
 }
 
+async fn try_async_stream_test() {
+    let out = try_output_stream().await.fuse();
+    pin_mut!(out);
+    let inp = try_input_stream(out).await.fuse();
+    pin_mut!(inp);
+    while let Some(v) = inp.next().await {
+        black_box(v);
+    }
+}
+
 use futures::stream::iter;
 
 fn test_stream_of_streams(
@@ -106,11 +146,6 @@ fn test_stream_of_streams(
 }
 
 async fn async_stream_test_switch() {
-    //let out = output_stream().await.fuse();
-    //pin_mut!(out);
-    //let (mut tx, mut rx) = futures::channel::mpsc::channel(1000);
-
-    //tx.send(out).await;
     let streams = test_stream_of_streams();
     pin_mut!(streams);
     switch_streams(streams).await;
@@ -122,6 +157,10 @@ fn criterion_benchmark(c: &mut Criterion) {
     //let (tx, mut rx) = mpsc::channel::<f32>();
     //let (tx_chunked, mut rx_chunked) = mpsc::channel::<[f32; 10]>();
     let (tx_big_chunked, mut rx_big_chunked) = mpsc::channel::<[f32; 100]>();
+
+    c.bench_function("try_async_stream_test", |b| {
+        b.iter(|| rt.block_on(try_async_stream_test()))
+    });
 
     c.bench_function("async_stream_test_switch", |b| {
         b.iter(|| rt.block_on(async_stream_test_switch()))
