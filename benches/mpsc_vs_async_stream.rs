@@ -67,6 +67,14 @@ async fn output_stream() -> impl Stream<Item = [f32; 100]> {
         }
     })
 }
+
+async fn output_stream_nochunk() -> impl Stream<Item = f32> {
+    fn_stream(|emitter| async move {
+        for i in black_box(0..100000) {
+            emitter.emit(black_box(0f32)).await;
+        }
+    })
+}
 //
 // async fn output_stream() -> impl Stream<Item = [f32; 100]> {
 //     fn_stream(|emitter| async move {
@@ -98,6 +106,13 @@ async fn try_input_stream<S: Stream<Item = Result<[f32; 100], Box<dyn Error>>> +
 }
 
 async fn input_stream<S: Stream<Item = [f32; 100]> + Unpin + FusedStream>(mut stream: S) {
+    for item in stream.next().await {
+        // assert_eq!(item, [2f32; 100]);
+        black_box(item);
+    }
+}
+
+async fn input_stream_nochunk<S: Stream<Item = f32> + Unpin + FusedStream>(mut stream: S) {
     for item in stream.next().await {
         // assert_eq!(item, [2f32; 100]);
         black_box(item);
@@ -142,6 +157,13 @@ async fn async_stream_test() {
     input_stream(out).await;
 }
 
+// 200.72 ns!!!!
+async fn async_stream_nochunk_test() {
+    let out = output_stream_nochunk().await.fuse();
+    pin_mut!(out);
+    input_stream_nochunk(out).await;
+}
+
 async fn try_async_stream_test() {
     let out = try_output_stream().await.fuse();
     pin_mut!(out);
@@ -175,6 +197,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     //let (tx, mut rx) = mpsc::channel::<f32>();
     //let (tx_chunked, mut rx_chunked) = mpsc::channel::<[f32; 10]>();
     let (tx_big_chunked, mut rx_big_chunked) = mpsc::channel::<[f32; 100]>();
+
+    c.bench_function("async_stream_nochunk_test", |b| {
+        b.iter(|| rt.block_on(async_stream_nochunk_test()))
+    });
+
     c.bench_function("tachyonix_test", |b| {
         b.iter(|| rt.block_on(tachyonix_test(&tac_tx, &mut tac_rx)))
     });
