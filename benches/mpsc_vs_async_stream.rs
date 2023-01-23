@@ -68,6 +68,7 @@ async fn output_stream() -> impl Stream<Item = [f32; 100]> {
     })
 }
 
+// 80ns :(
 async fn output_stream_nochunk() -> impl Stream<Item = f32> {
     fn_stream(|emitter| async move {
         for i in black_box(0..100000) {
