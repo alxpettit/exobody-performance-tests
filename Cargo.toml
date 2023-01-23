@@ -14,6 +14,7 @@ flume = "0.10.14"
 futures = { version = "0.3.25", features = ["futures-executor"] }
 itertools = "0.10.5"
 rand = "0.8.5"
+tachyonix = "0.2.0"
 tinyvec = "1.6.0"
 tokio = { version = "1.24.2", features = ["full"] }
 wide = "0.7.5"

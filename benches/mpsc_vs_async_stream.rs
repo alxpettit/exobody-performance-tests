@@ -43,6 +43,23 @@ fn flume_test(tx: &flume::Sender<[f32; 100]>, rx: &mut flume::Receiver<[f32; 100
     }
 }
 
+async fn tachyonix_test(
+    tx: &tachyonix::Sender<[f32; 100]>,
+    rx: &mut tachyonix::Receiver<[f32; 100]>,
+) {
+    let array = [2f32; 100];
+    for i in black_box(0..1000) {
+        let tx_send_data = array.iter().map(|v| black_box(black_box(*v) * 2.));
+        let v: [f32; 100] = tx_send_data.collect_vec().try_into().unwrap();
+        tx.send(black_box(v)).await.unwrap();
+    }
+    for i in black_box(0..1000) {
+        for s in black_box(rx.recv().await.unwrap()) {
+            black_box(s);
+        }
+    }
+}
+
 async fn output_stream() -> impl Stream<Item = [f32; 100]> {
     fn_stream(|emitter| async move {
         for i in black_box(0..1000) {
@@ -152,11 +169,15 @@ async fn async_stream_test_switch() {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
+    let (tac_tx, mut tac_rx) = tachyonix::channel::<[f32; 100]>(10000);
     let rt = tokio::runtime::Runtime::new().unwrap();
     let (flume_tx, mut flume_rx) = flume::bounded::<[f32; 100]>(1000usize);
     //let (tx, mut rx) = mpsc::channel::<f32>();
     //let (tx_chunked, mut rx_chunked) = mpsc::channel::<[f32; 10]>();
     let (tx_big_chunked, mut rx_big_chunked) = mpsc::channel::<[f32; 100]>();
+    c.bench_function("tachyonix_test", |b| {
+        b.iter(|| rt.block_on(tachyonix_test(&tac_tx, &mut tac_rx)))
+    });
 
     c.bench_function("try_async_stream_test", |b| {
         b.iter(|| rt.block_on(try_async_stream_test()))
