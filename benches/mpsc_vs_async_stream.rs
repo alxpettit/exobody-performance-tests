@@ -17,7 +17,7 @@ fn mpsc_test(tx: &Sender<[f32; 100]>, rx: &mut Receiver<[f32; 100]>) {
         tx.send(black_box(v)).unwrap();
     }
     for _ in black_box(0..1000) {
-        for s in black_box(rx.recv().unwrap()) {
+        while let Ok(s) = black_box(rx.recv()) {
             black_box(s);
         }
     }
@@ -32,7 +32,7 @@ fn flume_test(tx: &flume::Sender<[f32; 100]>, rx: &mut flume::Receiver<[f32; 100
         tx.send(black_box(v)).unwrap();
     }
     for _ in black_box(0..1000) {
-        for s in black_box(rx.recv().unwrap()) {
+        while let Ok(s) = black_box(rx.recv()) {
             black_box(s);
         }
     }
@@ -49,7 +49,7 @@ async fn tachyonix_test(
         tx.send(black_box(v)).await.unwrap();
     }
     for _ in black_box(0..1000) {
-        for s in black_box(rx.recv().await.unwrap()) {
+        while let Ok(s) = black_box(rx.recv().await) {
             black_box(s);
         }
     }
@@ -66,7 +66,7 @@ async fn output_stream() -> impl Stream<Item = [f32; 100]> {
 // 80ns :(
 async fn output_stream_nochunk() -> impl Stream<Item = f32> {
     fn_stream(|emitter| async move {
-        for _ in black_box(0..100000) {
+        for _ in 0..100000 {
             emitter.emit(black_box(0f32)).await;
         }
     })
@@ -188,7 +188,7 @@ async fn async_stream_test_switch() {
 fn criterion_benchmark(c: &mut Criterion) {
     let (tac_tx, mut tac_rx) = tachyonix::channel::<[f32; 100]>(10000);
     let rt = tokio::runtime::Runtime::new().unwrap();
-    //let (flume_tx, mut flume_rx) = flume::bounded::<[f32; 100]>(1000usize);
+    let (flume_tx, mut flume_rx) = flume::bounded::<[f32; 100]>(1000usize);
     //let (tx, mut rx) = mpsc::channel::<f32>();
     //let (tx_chunked, mut rx_chunked) = mpsc::channel::<[f32; 10]>();
     let (tx_big_chunked, mut rx_big_chunked) = channel::<[f32; 100]>();
@@ -212,10 +212,10 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("mpsc_test", |b| {
         b.iter(|| mpsc_test(&tx_big_chunked, &mut rx_big_chunked))
     });
-    //
-    // c.bench_function("flume_test", |b| {
-    //     b.iter(|| flume_test(&flume_tx, &mut flume_rx))
-    // });
+
+    c.bench_function("flume_test", |b| {
+        b.iter(|| flume_test(&flume_tx, &mut flume_rx))
+    });
 
     c.bench_function("async_stream_test", |b| {
         b.iter(|| rt.block_on(async_stream_test()))
