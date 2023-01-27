@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use async_fn_stream::{fn_stream, try_fn_stream};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use futures::stream::{FusedStream, StreamExt};
@@ -90,7 +92,7 @@ async fn try_output_stream() -> impl Stream<Item = Result<[f32; 100], Box<dyn Er
 async fn try_input_stream<S: Stream<Item = Result<[f32; 100], Box<dyn Error>>> + Unpin>(
     mut stream: S,
 ) -> impl Stream<Item = Result<(), Box<dyn Error>>> {
-    try_fn_stream(|emitter| async move {
+    try_fn_stream(|_emitter| async move {
         while let Some(value) = stream.next().await {
             let value = value?;
             black_box(value);
@@ -163,7 +165,7 @@ async fn try_async_stream_test() {
     let inp = try_input_stream(out).await.fuse();
     pin_mut!(inp);
     while let Some(v) = inp.next().await {
-        black_box(v);
+        black_box(v).unwrap();
     }
 }
 
