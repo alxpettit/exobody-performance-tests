@@ -11,31 +11,31 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 // 277 us
 fn mpsc_test(tx: &Sender<[f32; 100]>, rx: &mut Receiver<[f32; 100]>) {
     let array = [2f32; 100];
-    for _ in black_box(0..1000) {
+    for _ in 0..1000 {
         let tx_send_data = array.iter().map(|v| black_box(black_box(*v) * 2.));
         let v: [f32; 100] = tx_send_data.collect_vec().try_into().unwrap();
         tx.send(black_box(v)).unwrap();
     }
-    for _ in black_box(0..1000) {
-        while let Ok(s) = black_box(rx.recv()) {
-            black_box(s);
-        }
+    //for _ in 0..1000 {
+    while let Ok(s) = black_box(rx.recv()) {
+        black_box(s);
     }
+    //}
 }
 
 // 285 us :( Even worse.
 fn flume_test(tx: &flume::Sender<[f32; 100]>, rx: &mut flume::Receiver<[f32; 100]>) {
     let array = [2f32; 100];
-    for _ in black_box(0..1000) {
+    for _ in 0..1000 {
         let tx_send_data = array.iter().map(|v| black_box(black_box(*v) * 2.));
         let v: [f32; 100] = tx_send_data.collect_vec().try_into().unwrap();
         tx.send(black_box(v)).unwrap();
     }
-    for _ in black_box(0..1000) {
-        while let Ok(s) = black_box(rx.recv()) {
-            black_box(s);
-        }
+    //for _ in 0..1000 {
+    while let Ok(s) = black_box(rx.recv()) {
+        black_box(s);
     }
+    //}
 }
 
 async fn tachyonix_test(
@@ -43,21 +43,21 @@ async fn tachyonix_test(
     rx: &mut tachyonix::Receiver<[f32; 100]>,
 ) {
     let array = [2f32; 100];
-    for _ in black_box(0..1000) {
+    for _ in 0..1000 {
         let tx_send_data = array.iter().map(|v| black_box(black_box(*v) * 2.));
         let v: [f32; 100] = tx_send_data.collect_vec().try_into().unwrap();
         tx.send(black_box(v)).await.unwrap();
     }
-    for _ in black_box(0..1000) {
-        while let Ok(s) = black_box(rx.recv().await) {
-            black_box(s);
-        }
+    //for _ in 0..1000 {
+    while let Ok(s) = black_box(rx.recv().await) {
+        black_box(s);
     }
+    // }
 }
 
 async fn output_stream() -> impl Stream<Item = [f32; 100]> {
     fn_stream(|emitter| async move {
-        for _ in black_box(0..1000) {
+        for _ in 0..1000 {
             emitter.emit(black_box([2f32; 100])).await;
         }
     })
