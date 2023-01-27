@@ -1,17 +1,10 @@
 use async_fn_stream::{fn_stream, try_fn_stream};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use futures::executor::block_on;
 use futures::stream::{FusedStream, StreamExt};
-use futures::{pin_mut, select, SinkExt, Stream};
+use futures::{pin_mut, select, Stream};
 use itertools::Itertools;
-use std::borrow::BorrowMut;
 use std::error::Error;
-use std::fs::File;
-use std::io::Write;
 use std::sync::mpsc::{channel, Receiver, Sender};
-use std::sync::{mpsc, Arc, Mutex};
-use std::thread;
-use tokio::sync::oneshot;
 
 // 277 us
 fn mpsc_test(tx: &Sender<[f32; 100]>, rx: &mut Receiver<[f32; 100]>) {
@@ -107,14 +100,14 @@ async fn try_input_stream<S: Stream<Item = Result<[f32; 100], Box<dyn Error>>> +
 }
 
 async fn input_stream<S: Stream<Item = [f32; 100]> + Unpin + FusedStream>(mut stream: S) {
-    for item in stream.next().await {
+    while let Some(item) = stream.next().await {
         // assert_eq!(item, [2f32; 100]);
         black_box(item);
     }
 }
 
 async fn input_stream_nochunk<S: Stream<Item = f32> + Unpin + FusedStream>(mut stream: S) {
-    for item in stream.next().await {
+    while let Some(item) = stream.next().await {
         // assert_eq!(item, [2f32; 100]);
         black_box(item);
     }

@@ -1,4 +1,5 @@
 #![feature(portable_simd)]
+#![allow(dead_code)]
 use duration_human::DurationHuman;
 use itertools::Itertools;
 use std::hint::black_box;
